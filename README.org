@@ -1,0 +1,7 @@
+* About
+
+  Download accelerator, support only *http* and *https*
+
+  This project is separated from [[https://github.com/kumakichi/goaxel][goaxel]], the most important feature is proxy support(socks5 and http)
+
+  Http proxy comes from [[https://github.com/Yawning/obfs4][obfs4]]
