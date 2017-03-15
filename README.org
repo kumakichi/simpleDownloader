@@ -5,3 +5,11 @@
   This project is separated from [[https://github.com/kumakichi/goaxel][goaxel]], the most important feature is proxy support(socks5 and http)
 
   Http proxy comes from [[https://github.com/Yawning/obfs4][obfs4]]
+
+* Example
+
+#+BEGIN_SRC sh
+  $ simpleDownloader -x socks5://192.168.20.222:7777 https://youtube.com
+
+  $ simpleDownloader -x http://127.0.0.1:8118 https://www.google.com
+#+END_SRC
