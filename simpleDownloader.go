@@ -297,7 +297,20 @@ func getContentInfomation(u string, c []Cookie, h []Header) (length int, accept 
 	if len(resp.Header.Get("Content-Range")) > 0 || len(resp.Header.Get("Accept-Ranges")) > 0 {
 		accept = true
 	}
-	filename = resp.Header.Get("filename")
+
+	cd := resp.Header.Get("Content-Disposition")
+	if len(cd) == 0 {
+		return
+	}
+
+	key := `filename="`
+	idx := strings.Index(cd, key)
+
+	if -1 == idx {
+		return
+	}
+	filename = cd[idx+len(key) : len(cd)-1]
+
 	return
 }
 
