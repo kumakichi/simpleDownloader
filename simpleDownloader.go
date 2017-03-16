@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	appName               string = "SimpleHttp"
+	appName               string = "simpleDownloader"
 	defaultOutputFileName string = "default"
 	CFG_FILENAME          string = ".sh_cfg"
 	CFG_DELIMETER         string = "##"
@@ -86,7 +86,7 @@ func init() {
 	flag.BoolVar(&forcePiece, "f", false, "Force goaxel to use multi-thread")
 	flag.StringVar(&outputPath, "o", ".", "Set output directory.")
 	flag.BoolVar(&showVersion, "V", false, "Print version and copyright")
-	flag.StringVar(&cookiePath, "load-cookies", "", `Cookie file in the format, originally used by Netscape's cookies.txt`)
+	flag.StringVar(&cookiePath, "load-cookies", "", `Cookie file path, in the format, originally used by Netscape's cookies.txt`)
 	flag.StringVar(&usrDefHeader, "header", "", `Semicolon seperated header string`)
 	flag.StringVar(&proxyAddr, "x", "", "Set Proxy,<Protocol://HOST:PORT>")
 	proxy.RegisterDialerType("http", NewHttpProxy)
