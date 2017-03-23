@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -26,6 +27,7 @@ const (
 	CFG_FILENAME          string = ".sh_cfg"
 	CFG_DELIMETER         string = "##"
 	buffer_size           int    = 1024 * 1024
+	maxFileNameLen        int    = 20
 )
 
 type Cookie struct {
@@ -528,6 +530,8 @@ func downSingleFile(urlStr string) bool {
 			outputFileName = headerFilename
 		}
 
+		checkOutputFileName(urlStr)
+
 		if contentLength < 1 { // get failed
 			Error.Printf("Link %s get content info failed\n", urlStr)
 			getUnknownSizeFile(urlStr, cookies, headers, outputFileName)
@@ -537,8 +541,8 @@ func downSingleFile(urlStr string) bool {
 		cfgWrite(urlStr, contentLength, acceptRange, headerFilename)
 	}
 
-	Info.Printf("[DEBUG] content length:%d,accept range:%t, cookie file:%s\n",
-		contentLength, acceptRange, cookiePath)
+	Info.Printf("[DEBUG] content length:%d,accept range:%t, cookie file:%s, outputFileName:%s\n",
+		contentLength, acceptRange, cookiePath, outputFileName)
 
 	bar = createProgressBar(contentLength)
 	defer bar.Finish()
@@ -689,5 +693,16 @@ func getUnknownSizeFile(path string, c []Cookie, h []Header, outname string) {
 			fmt.Println("Done")
 			return
 		}
+	}
+}
+
+func checkOutputFileName(url_path string) {
+	if outputFileName == defaultOutputFileName {
+		outputFileName = path.Base(url_path)
+	}
+
+	l := len(outputFileName)
+	if l > maxFileNameLen {
+		outputFileName = outputFileName[l-maxFileNameLen : l]
 	}
 }
