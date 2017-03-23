@@ -98,6 +98,11 @@ func downloadOnePiece(rangeFrom, pieceSize, alreadyHas int,
 	u string, c []Cookie, h []Header, ofname string) {
 	dlDone := false
 
+	if alreadyHas >= pieceSize {
+		noticeDone <- true
+		return
+	}
+
 	f, err := os.OpenFile(ofname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0664)
 	if err != nil {
 		panic(err)
@@ -523,10 +528,10 @@ func downSingleFile(urlStr string) bool {
 
 	var headerFilename string
 	contentLength, acceptRange, headerFilename = cfgRead(urlStr)
-	if -1 == contentLength {
+	if -1 == contentLength { // init firstly
 		contentLength, acceptRange, headerFilename = getContentInfomation(urlStr, cookies, headers)
 
-		if "" != headerFilename {
+		if "" != headerFilename && outputFileName == defaultOutputFileName {
 			outputFileName = headerFilename
 		}
 
@@ -538,7 +543,9 @@ func downSingleFile(urlStr string) bool {
 			return false
 		}
 
-		cfgWrite(urlStr, contentLength, acceptRange, headerFilename)
+		cfgWrite(urlStr, contentLength, acceptRange, outputFileName)
+	} else { // read from config
+		outputFileName = headerFilename
 	}
 
 	Info.Printf("[DEBUG] content length:%d,accept range:%t, cookie file:%s, outputFileName:%s\n",
