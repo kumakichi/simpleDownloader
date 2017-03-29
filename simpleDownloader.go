@@ -27,7 +27,7 @@ const (
 	CFG_FILENAME          string = ".sh_cfg"
 	CFG_DELIMETER         string = "##"
 	buffer_size           int    = 1024 * 1024
-	maxFileNameLen        int    = 20
+	maxFileNameLen        int    = 128
 )
 
 type Cookie struct {
