@@ -19,6 +19,7 @@ import (
 
 	"github.com/cheggaaa/pb"
 	"golang.org/x/net/proxy"
+	"log"
 )
 
 const (
@@ -546,6 +547,7 @@ func downSingleFile(urlStr string) bool {
 		cfgWrite(urlStr, contentLength, acceptRange, outputFileName)
 	} else { // read from config
 		outputFileName = headerFilename
+		checkOutputFileName(urlStr)
 	}
 
 	Info.Printf("[DEBUG] content length:%d,accept range:%t, cookie file:%s, outputFileName:%s\n",
@@ -642,7 +644,8 @@ func main() {
 
 		proxyUrl, err = url.Parse(proxyAddr)
 		if err != nil {
-			Error.Printf("Failed to parse proxy URL: %v\n", err)
+			log.Printf("Failed to parse proxy URL: %v\n", err)
+			os.Exit(-1)
 		}
 
 		dialer, err = proxy.FromURL(proxyUrl, proxy.Direct)
@@ -711,5 +714,16 @@ func checkOutputFileName(url_path string) {
 	l := len(outputFileName)
 	if l > maxFileNameLen {
 		outputFileName = outputFileName[l-maxFileNameLen : l]
+	}
+
+	if stat, err := os.Stat(outputFileName); err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+	} else {
+		if stat.Size() > 0 {
+			log.Printf("File \"%s\" already exist, try another name", outputFileName)
+			os.Exit(-1)
+		}
 	}
 }
