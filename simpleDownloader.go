@@ -20,6 +20,7 @@ import (
 	"github.com/cheggaaa/pb"
 	"golang.org/x/net/proxy"
 	"log"
+	"sync"
 )
 
 const (
@@ -27,7 +28,8 @@ const (
 	defaultOutputFileName string = "default"
 	CFG_FILENAME          string = ".sh_cfg"
 	CFG_DELIMETER         string = "##"
-	buffer_size           int    = 1024 * 1024
+	rbuffer_size          int    = 1024 * 1024
+	wbuffer_size          int    = 100 * 1024 * 1024
 	maxFileNameLen        int    = 128
 )
 
@@ -40,6 +42,8 @@ type Header struct {
 }
 
 var (
+	allPiecesOk    bool
+	wg             sync.WaitGroup
 	tryThreadhold  int
 	connNum        int
 	userAgent      string
@@ -51,7 +55,6 @@ var (
 	outputFile     *os.File
 	contentLength  int
 	acceptRange    bool
-	noticeDone     chan bool
 	bar            *pb.ProgressBar
 	cookiePath     string
 	usrDefHeader   string
@@ -98,11 +101,15 @@ func init() {
 func downloadOnePiece(rangeFrom, pieceSize, alreadyHas int,
 	u string, c []Cookie, h []Header, ofname string) {
 	dlDone := false
-
-	if alreadyHas >= pieceSize {
-		noticeDone <- true
-		return
-	}
+	defer func() {
+		if !dlDone {
+			allPiecesOk = false
+			Info.Printf("%s is not ok!\n", ofname)
+		} else {
+			Info.Printf("%s is done!\n", ofname)
+		}
+		wg.Done()
+	}()
 
 	f, err := os.OpenFile(ofname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0664)
 	if err != nil {
@@ -128,12 +135,11 @@ func downloadOnePiece(rangeFrom, pieceSize, alreadyHas int,
 			break
 		}
 	}
-	noticeDone <- dlDone
 }
 
 func writeContent(resp *http.Response, f *os.File, pieceSize, alreadyHas int) (written int) {
 	fileOffset := alreadyHas
-	data := make([]byte, buffer_size)
+	data := make([]byte, rbuffer_size)
 	written = 0
 
 	defer resp.Body.Close()
@@ -142,7 +148,7 @@ func writeContent(resp *http.Response, f *os.File, pieceSize, alreadyHas int) (w
 	var err error
 	for {
 		left := pieceSize - alreadyHas - written
-		if left >= buffer_size {
+		if left >= rbuffer_size {
 			n, err = resp.Body.Read(data)
 		} else {
 			n, err = resp.Body.Read(data[:left])
@@ -221,7 +227,7 @@ func fileSize(fileName string) int64 {
 	return 0
 }
 
-func divideAndDownload(u string, cookie []Cookie, header []Header) (realConn int) {
+func divideAndDownload(u string, cookie []Cookie, header []Header) (realConn int, ps int) {
 	var ofname string
 	var startPos, remainder int
 	realConn = connNum
@@ -233,6 +239,12 @@ func divideAndDownload(u string, cookie []Cookie, header []Header) (realConn int
 
 	eachPieceSize := contentLength / realConn
 	remainder = contentLength - eachPieceSize*realConn
+
+	if eachPieceSize > remainder {
+		ps = eachPieceSize
+	} else {
+		ps = remainder
+	}
 
 	for i := 0; i < realConn; i++ {
 		startPos = i * eachPieceSize
@@ -247,13 +259,19 @@ func divideAndDownload(u string, cookie []Cookie, header []Header) (realConn int
 		if i == realConn-1 {
 			eachPieceSize += remainder
 		}
-		Info.Printf("%s starts at %d, already has %d\n", ofname, startPos, alreadyHas)
+		Info.Printf("%s starts at %d, already has %d, part size %d\n", ofname, startPos, alreadyHas, eachPieceSize)
+
+		if alreadyHas >= eachPieceSize {
+			continue
+		}
+
+		wg.Add(1)
 		go downloadOnePiece(startPos, eachPieceSize, alreadyHas, u, cookie, header, ofname)
 	}
 	return
 }
 
-func mergeChunkFiles() {
+func mergeChunkFiles(ps int) {
 	var n int
 	var err error
 	var chunkFiles []string
@@ -263,13 +281,18 @@ func mergeChunkFiles() {
 		Error.Fatal("Merge chunk files failed :", err.Error())
 	}
 
+	buf_size := ps
+	if ps > wbuffer_size {
+		buf_size = wbuffer_size
+	}
+	buf := make([]byte, buf_size)
+
 	for _, v := range chunkFiles {
 		chunkFile, _ := os.Open(v)
 		defer chunkFile.Close()
 
 		chunkReader := bufio.NewReader(chunkFile)
 		chunkWriter := bufio.NewWriter(outputFile)
-		buf := make([]byte, 100*1024*1024)
 
 		for {
 			n, err = chunkReader.Read(buf)
@@ -562,22 +585,16 @@ func downSingleFile(urlStr string) bool {
 	}
 	defer outputFile.Close()
 
-	realConn := divideAndDownload(urlStr, cookies, headers)
+	allPiecesOk = true
+	_, pieceSize := divideAndDownload(urlStr, cookies, headers)
 	bar.Start()
 
-	allPiecesOk := true
-	for i := 0; i < realConn; i++ {
-		if !<-noticeDone {
-			fmt.Printf("Part %d is not ok!\n", i)
-			allPiecesOk = false
-		}
-	}
-
+	wg.Wait()
 	if !allPiecesOk {
 		return false
 	}
 
-	mergeChunkFiles()
+	mergeChunkFiles(pieceSize)
 	cfgDelete(urlStr)
 	return true
 }
@@ -663,7 +680,6 @@ func main() {
 	getCookieAbsolutePath()
 	changeToOutputDir(outputPath)
 
-	noticeDone = make(chan bool)
 	for i := 0; i < len(urls); i++ {
 		downSingleFile(urls[i])
 	}
@@ -684,7 +700,7 @@ func getUnknownSizeFile(path string, c []Cookie, h []Header, outname string) {
 	defer f.Close()
 
 	var n int
-	data := make([]byte, buffer_size)
+	data := make([]byte, rbuffer_size)
 	fileOffset := 0
 
 	fmt.Println("Downloading unknown size file, please wait ...")
