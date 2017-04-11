@@ -277,6 +277,7 @@ func mergeChunkFiles(ps int) {
 	var chunkFiles []string
 
 	chunkFiles, err = getChunkFilesList(outputFileName)
+	Info.Printf("chunkFiles:%s", chunkFiles)
 	if err != nil {
 		Error.Fatal("Merge chunk files failed :", err.Error())
 	}
@@ -726,6 +727,7 @@ func checkOutputFileName(url_path string) {
 	if outputFileName == defaultOutputFileName {
 		outputFileName = path.Base(url_path)
 	}
+	outputFileName = path.Base(outputFileName)
 
 	l := len(outputFileName)
 	if l > maxFileNameLen {
