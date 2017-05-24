@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -62,6 +61,7 @@ var (
 	cfgPath        string
 	proxyAddr      string
 	dialer         proxy.Dialer
+	chunkFiles     []string
 )
 
 type SortString []string
@@ -196,30 +196,6 @@ func parseUrl(urlStr string) (path string, host string, e error) {
 	return
 }
 
-func getChunkFilesList(outputName string) (partFiles []string, e error) {
-	err := filepath.Walk(".", func(path string, f os.FileInfo, err error) error {
-		if f == nil {
-			return err
-		}
-		if f.IsDir() {
-			return nil
-		}
-		if strings.HasPrefix(path, outputName+".part.") {
-			partFiles = append(partFiles, path)
-		}
-		return nil
-	})
-
-	if err != nil {
-		e = err
-		fmt.Printf("ERROR:", err.Error())
-		return
-	}
-	sort.Sort(SortString(partFiles))
-
-	return
-}
-
 func fileSize(fileName string) int64 {
 	if fi, err := os.Stat(fileName); err == nil {
 		return fi.Size()
@@ -246,9 +222,11 @@ func divideAndDownload(u string, cookie []Cookie, header []Header) (realConn int
 		ps = remainder
 	}
 
+	chunkFiles = chunkFiles[:0]
 	for i := 0; i < realConn; i++ {
 		startPos = i * eachPieceSize
 		ofname = fmt.Sprintf("%s.part.%d", outputFileName, startPos)
+		chunkFiles = append(chunkFiles, outputPath+"/"+ofname)
 
 		alreadyHas := int(fileSize(ofname))
 		if alreadyHas > 0 {
@@ -274,9 +252,7 @@ func divideAndDownload(u string, cookie []Cookie, header []Header) (realConn int
 func mergeChunkFiles(ps int) {
 	var n int
 	var err error
-	var chunkFiles []string
 
-	chunkFiles, err = getChunkFilesList(outputFileName)
 	Info.Printf("chunkFiles:%s", chunkFiles)
 	if err != nil {
 		Error.Fatal("Merge chunk files failed :", err.Error())
