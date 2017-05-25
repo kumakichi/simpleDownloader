@@ -93,7 +93,7 @@ func init() {
 	flag.StringVar(&outputPath, "o", ".", "Set output directory.")
 	flag.BoolVar(&showVersion, "V", false, "Print version and copyright")
 	flag.StringVar(&cookiePath, "load-cookies", "", `Cookie file path, in the format, originally used by Netscape's cookies.txt`)
-	flag.StringVar(&usrDefHeader, "header", "", `Semicolon seperated header string`)
+	flag.StringVar(&usrDefHeader, "header", "", `Double semicolon seperated header string`)
 	flag.StringVar(&proxyAddr, "x", "", "Set Proxy,<Protocol://HOST:PORT>")
 	proxy.RegisterDialerType("http", NewHttpProxy)
 }
@@ -448,7 +448,7 @@ func parseCookieLine(s []byte, host string) (c Cookie, ok bool) {
 }
 
 func loadUsrDefinedHeader(usrDef string) (header []Header) {
-	s := strings.Split(usrDef, ";")
+	s := strings.Split(usrDef, ";;")
 	for i := 0; i < len(s); i++ {
 		l := len(s[i])
 		if l < 3 {
