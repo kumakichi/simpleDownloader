@@ -23,13 +23,13 @@ import (
 )
 
 const (
-	appName               string = "simpleDownloader"
-	defaultOutputFileName string = "default"
-	CFG_FILENAME          string = ".sh_cfg"
-	CFG_DELIMETER         string = "##"
-	rbuffer_size          int    = 1024 * 1024
-	wbuffer_size          int    = 100 * 1024 * 1024
-	maxFileNameLen        int    = 128
+	appName               = "simpleDownloader"
+	defaultOutputFileName = "default"
+	CFG_FILENAME          = ".sh_cfg"
+	CFG_DELIMETER         = "##"
+	rbuffer_size          = 1024 * 1024
+	wbuffer_size          = 100 * 1024 * 1024
+	maxFileNameLen        = 128
 )
 
 type Cookie struct {
@@ -323,6 +323,12 @@ func getContentInfomation(u string, c []Cookie, h []Header) (length int, accept 
 }
 
 func loadUsrDefHeaders(h []Header, req *http.Request) {
+	defer func() {
+		if req.Header.Get("User-Agent") == "" {
+			req.Header.Set("User-Agent", userAgent)
+		}
+	}()
+
 	if len(h) == 0 {
 		return
 	}
@@ -369,7 +375,6 @@ func Get(path string, c []Cookie, h []Header, rangeFrom, pieceSize, alreadyHas i
 		return
 	}
 
-	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Connection", "close") // default value of HTTP1.1 is 'keep-alive'
 	if pieceSize == 0 {
 		req.Header.Add("Range", "bytes=0-")
