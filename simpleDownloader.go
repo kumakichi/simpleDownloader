@@ -2,24 +2,24 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"errors"
-	"net/http"
+	"gopkg.in/cheggaaa/pb.v1"
 
-	"github.com/cheggaaa/pb"
 	"golang.org/x/net/proxy"
-	"log"
-	"sync"
 )
 
 const (
