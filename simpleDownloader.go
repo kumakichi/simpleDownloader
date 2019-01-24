@@ -186,7 +186,6 @@ func parseUrl(urlStr string) (path string, host string, e error) {
 	}
 
 	if u.Scheme != "http" && u.Scheme != "https" {
-		fmt.Println("xx", u.Scheme)
 		e = errors.New("only support http/https")
 		return
 	}
@@ -637,7 +636,11 @@ func main() {
 		showVersionInfo()
 	}
 
-	if len(proxyAddr) > 0 { // use sokcs
+	if len(proxyAddr) == 0 {
+		proxyAddr = getProxyFromEnv()
+	}
+
+	if len(proxyAddr) > 0 { // use proxy
 		var err error
 		var proxyUrl *url.URL
 
@@ -725,4 +728,20 @@ func checkOutputFileName(url_path string) {
 			os.Exit(-1)
 		}
 	}
+}
+
+func getProxyFromEnv() (proxy string) {
+	p := []string{"http_proxy", "https_proxy", "all_proxy"}
+	for _, v := range p {
+		proxy = os.Getenv(v)
+		if len(proxy) > 0 {
+			return
+		}
+
+		proxy = os.Getenv(strings.ToUpper(v))
+		if len(proxy) > 0 {
+			return
+		}
+	}
+	return
 }
