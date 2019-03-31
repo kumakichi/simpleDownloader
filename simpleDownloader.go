@@ -40,6 +40,17 @@ type Header struct {
 	Header, Value string
 }
 
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	return "my string representation"
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 var (
 	allPiecesOk    bool
 	wg             sync.WaitGroup
@@ -56,7 +67,7 @@ var (
 	acceptRange    bool
 	bar            *pb.ProgressBar
 	cookiePath     string
-	usrDefHeader   string
+	usrDefHeader   arrayFlags
 	forcePiece     bool
 	cfgPath        string
 	proxyAddr      string
@@ -91,9 +102,9 @@ func init() {
 	flag.BoolVar(&debug, "d", false, "Print debug infomation")
 	flag.BoolVar(&forcePiece, "f", false, "Force goaxel to use multi-thread")
 	flag.StringVar(&outputPath, "o", ".", "Set output directory.")
-	flag.BoolVar(&showVersion, "V", false, "Print version and copyright")
+	flag.BoolVar(&showVersion, "version", false, "Print version and copyright")
 	flag.StringVar(&cookiePath, "load-cookies", "", `Cookie file path, in the format, originally used by Netscape's cookies.txt`)
-	flag.StringVar(&usrDefHeader, "header", "", `Double semicolon seperated header string`)
+	flag.Var(&usrDefHeader, "header", `Extra header to include in the request when sending HTTP to a server`)
 	flag.StringVar(&proxyAddr, "x", "", "Set Proxy,<Protocol://HOST:PORT>")
 	proxy.RegisterDialerType("http", NewHttpProxy)
 }
@@ -451,8 +462,7 @@ func parseCookieLine(s []byte, host string) (c Cookie, ok bool) {
 	return
 }
 
-func loadUsrDefinedHeader(usrDef string) (header []Header) {
-	s := strings.Split(usrDef, ";;")
+func loadUsrDefinedHeader(s arrayFlags) (header []Header) {
 	for i := 0; i < len(s); i++ {
 		l := len(s[i])
 		if l < 3 {
@@ -582,7 +592,7 @@ func downSingleFile(urlStr string) bool {
 
 func showVersionInfo() {
 	fmt.Println(fmt.Sprintf("%s Version 1.1", appName))
-	fmt.Println("Copyright (C) 2017 kumakichi")
+	fmt.Println("Copyright (C) 2017-2019 kumakichi")
 }
 
 func showUsage() {
