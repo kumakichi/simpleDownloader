@@ -29,7 +29,7 @@ const (
 	CFG_DELIMETER         = "##"
 	rbuffer_size          = 1024 * 1024
 	wbuffer_size          = 100 * 1024 * 1024
-	maxFileNameLen        = 128
+	// maxFileNameLen        = 128
 )
 
 type Cookie struct {
@@ -723,10 +723,10 @@ func checkOutputFileName(url_path string) {
 	}
 	outputFileName = path.Base(outputFileName)
 
-	l := len(outputFileName)
-	if l > maxFileNameLen {
-		outputFileName = outputFileName[l-maxFileNameLen : l]
-	}
+	// l := len(outputFileName)
+	// if l > maxFileNameLen {
+	// 	outputFileName = outputFileName[l-maxFileNameLen : l]
+	// }
 
 	if stat, err := os.Stat(outputFileName); err != nil {
 		if os.IsNotExist(err) {
