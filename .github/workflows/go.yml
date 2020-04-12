@@ -1,16 +1,30 @@
-name: Go
+name: Build and Release
 
 on:
   push:
-    branches: [ master ]
+    tags:
+      - 'v*.*.*'
+    paths-ignore:
+      - 'README.org'
+      - 'LICENSE'
   pull_request:
-    branches: [ master ]
+    paths-ignore:
+      - 'README.org'
+      - 'LICENSE'
 
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, windows, darwin]
+        arch: [amd64]
+
+    env:
+      githubFullName: ${{ github.event.repository.full_name }}
+      targetName: ${{ github.event.repository.name }}
+
     steps:
 
     - name: Set up Go 1.13
@@ -22,13 +36,21 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
-          fetch-depth: 1
+        fetch-depth: 1
 
     - name: Get dependencies
       run: go get -v -t -d ./...
 
-    - name: Build
-      run: go build -v .
+    - name: Compile
+      env:
+        goos: ${{matrix.os}}
+        goarch: ${{matrix.arch}}
+        archiveName: ${{env.targetName}}-${{matrix.os}}-${{matrix.arch}}
+      run: |
+        GOOS=${{env.goos}} GOARCH=${{env.goarch}} go build -o ${{env.archiveName}} -v .
+        pwd
+        ls
+        tar czf ${{env.archiveName}}.tar.gz ${{env.archiveName}}
 
     - name: Create Release
       id: create_release
@@ -45,9 +67,12 @@ jobs:
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        goos: ${{matrix.os}}
+        goarch: ${{matrix.arch}}
+        archiveName: ${{env.targetName}}-${{matrix.os}}-${{matrix.arch}}
       with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./simpleDownloader
-          asset_name: simpleDownloader-linux-amd64
-          asset_content_type: application/octet-stream
+          asset_path: ${{ env.archiveName }}.tar.gz
+          asset_name: ${{ env.archiveName }}.tar.gz
+          asset_content_type: application/gzip
